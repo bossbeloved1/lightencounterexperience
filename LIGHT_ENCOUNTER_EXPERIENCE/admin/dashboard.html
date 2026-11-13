@@ -1,0 +1,280 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <title>Registration Dashboard | LEE</title>
+
+  <link rel="icon" href="../assets/images/lee-mark.svg">
+  <link rel="stylesheet" href="../css/style.css">
+
+  <style>
+    .design-export-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .design-export-select {
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 6px;
+      background: #21130f;
+      color: #fff;
+      font: inherit;
+      cursor: pointer;
+      max-width: 220px;
+    }
+
+    .design-export-select:focus {
+      outline: 2px solid #d86c3c;
+      outline-offset: 2px;
+    }
+
+    #exportDesign:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
+
+    @media(max-width:700px) {
+      .design-export-group {
+        width: 100%;
+      }
+
+      .design-export-select {
+        flex: 1;
+        min-width: 0;
+      }
+    }
+  </style>
+</head>
+
+<body class="dashboard-page">
+
+  <div class="dash-shell">
+
+    <aside class="sidebar">
+
+      <a class="brand" href="../index.html">
+        <img
+          src="../assets/images/lee-mark.svg"
+          class="brand-mark"
+          alt=""
+        >
+
+        <span class="brand-name">
+          LIGHT ENCOUNTER
+          <small>EXPERIENCE</small>
+        </span>
+      </a>
+
+      <div class="side-label">MANAGEMENT</div>
+
+      <a class="side-link active" href="dashboard.html">
+        ▦ &nbsp; Registrations
+      </a>
+
+      <a class="side-link" href="../qr-generator.html">
+        ▣ &nbsp; QR generator
+      </a>
+
+      <button id="logoutBtn" class="side-link logout">
+        ↪ &nbsp; Sign out
+      </button>
+
+    </aside>
+
+
+    <main class="dashboard-main">
+
+      <div class="dash-top">
+
+        <div>
+          <p class="eyebrow">EPHPHATHA / ADMINISTRATION</p>
+          <h1>Registration <em>dashboard</em></h1>
+        </div>
+
+        <span class="secure-tag">
+          ● SECURE ADMIN AREA
+        </span>
+
+      </div>
+
+
+      <div class="stats-grid">
+
+        <div class="stat-card">
+          <span>TOTAL REGISTRATIONS</span>
+          <strong id="totalCount">—</strong>
+          <small>All submitted entries</small>
+        </div>
+
+        <div class="stat-card">
+          <span>AVAILABLE TO SERVE</span>
+          <strong id="serveCount">—</strong>
+          <small>Selected a serving team</small>
+        </div>
+
+        <div class="stat-card">
+          <span>MEETING AVAILABILITY</span>
+          <strong id="availableCount">—</strong>
+          <small>Answered yes</small>
+        </div>
+
+      </div>
+
+
+      <div class="table-panel">
+
+        <div class="table-toolbar">
+
+          <div>
+            <h2>All registrations</h2>
+            <p>
+              Review, search, select and export registrant information.
+            </p>
+          </div>
+
+
+          <div class="toolbar-actions">
+
+            <input
+              id="searchInput"
+              class="search-input"
+              placeholder="Search name, email, city..."
+            >
+
+            <button id="exportCsv" class="outline-btn">
+              EXPORT CSV
+            </button>
+
+            <button id="exportXlsx" class="outline-btn">
+              EXPORT EXCEL
+            </button>
+
+            <button id="exportDoc" class="outline-btn">
+              EXPORT WORD
+            </button>
+
+            <div class="design-export-group">
+
+              <select
+                id="designExportType"
+                class="design-export-select"
+                aria-label="Choose registration design export format"
+              >
+                <option value="individual">
+                  Individual PNGs
+                </option>
+
+                <option value="all">
+                  All Registrations (PDF)
+                </option>
+              </select>
+
+              <button id="exportDesign" class="outline-btn">
+                DOWNLOAD DESIGN
+              </button>
+
+            </div>
+
+            <button id="deleteSelected" class="danger-btn">
+              DELETE SELECTED
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <div class="table-scroll">
+
+          <table>
+
+            <thead>
+              <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    id="selectAll"
+                    aria-label="Select all"
+                  >
+                </th>
+
+                <th>NAME</th>
+                <th>PHONE</th>
+                <th>CHURCH / FELLOWSHIP</th>
+                <th>LOCATION</th>
+                <th>DATE</th>
+                <th>DETAILS</th>
+              </tr>
+            </thead>
+
+            <tbody id="registrationsBody">
+              <tr>
+                <td colspan="7" class="empty-cell">
+                  Loading registrations…
+                </td>
+              </tr>
+            </tbody>
+
+          </table>
+
+        </div>
+
+
+        <div class="table-foot">
+          <span id="resultCount">0 records</span>
+          <span>LIGHT ENCOUNTER EXPERIENCE · EPHPHATHA</span>
+        </div>
+
+      </div>
+
+
+      <div id="detailModal" class="modal" aria-hidden="true">
+
+        <div class="modal-card">
+
+          <button class="modal-close" id="closeModal">
+            ×
+          </button>
+
+          <p class="eyebrow">REGISTRANT PROFILE</p>
+
+          <h2 id="detailName">
+            Registration details
+          </h2>
+
+          <div id="detailContent" class="detail-grid"></div>
+
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Excel export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+
+  <!-- Word export -->
+  <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+
+  <!-- PDF export -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+
+  <!-- Project scripts -->
+  <script src="../js/config.js"></script>
+  <script src="../js/dashboard.js"></script>
+
+</body>
+</html>
