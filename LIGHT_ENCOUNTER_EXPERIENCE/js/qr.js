@@ -1,146 +1,175 @@
 
 let qrImageUrl = null;
 
-const generateBtn = document.getElementById('generateQr');
-const downloadBtn = document.getElementById('downloadQr');
-const siteUrl = document.getElementById('siteUrl');
-const qrOutput = document.getElementById('qrOutput');
+const generateButton = document.getElementById("generateQr");
+const downloadButton = document.getElementById("downloadQr");
+const urlInput = document.getElementById("siteUrl");
+const output = document.getElementById("qrOutput");
+
+// Convert the existing LEE SVG logo into a PNG with a white background.
+function loadLEELogo() {
+    return new Promise((resolve, reject) => {
+        const logo = new Image();
+
+        logo.onload = () => {
+            try {
+                const canvas = document.createElement("canvas");
+                canvas.width = 300;
+                canvas.height = 300;
+
+                const ctx = canvas.getContext("2d");
+
+                // White circular background
+                ctx.fillStyle = "#ffffff";
+                ctx.beginPath();
+                ctx.arc(150, 150, 150, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Fit the LEE logo inside the circle
+                const maxSize = 220;
+                const scale = Math.min(
+                    maxSize / logo.width,
+                    maxSize / logo.height
+                );
+
+                const width = logo.width * scale;
+                const height = logo.height * scale;
+
+                ctx.drawImage(
+                    logo,
+                    (300 - width) / 2,
+                    (300 - height) / 2,
+                    width,
+                    height
+                );
+
+                resolve(canvas.toDataURL("image/png"));
+            } catch (error) {
+                reject(error);
+            }
+        };
+
+        logo.onerror = () => {
+            reject(new Error("LEE logo could not be loaded."));
+        };
+
+        logo.src = new URL(
+            "assets/images/lee-mark.svg",
+            window.location.href
+        ).href;
+    });
+}
 
 // Generate QR code
-generateBtn.addEventListener('click', async () => {
+generateButton.addEventListener("click", async () => {
+    const websiteUrl = urlInput.value.trim();
 
-    const url = siteUrl.value.trim();
-
-    qrImageUrl = null;
-    downloadBtn.disabled = true;
-
-    if (!/^https?:\/\/[^\s]+$/i.test(url)) {
-        qrOutput.textContent =
-            'Please enter a valid website URL starting with https://';
+    if (!/^https?:\/\/.+/i.test(websiteUrl)) {
+        output.textContent =
+            "Enter a valid website URL, including https://";
         return;
     }
 
+    generateButton.disabled = true;
+    downloadButton.disabled = true;
+    generateButton.textContent = "GENERATING QR CODE...";
+
+    output.innerHTML = "<span>Creating your LEE branded QR code...</span>";
+
     try {
+        // Load and prepare the LEE logo
+        const logoData = await loadLEELogo();
 
-        generateBtn.disabled = true;
-        generateBtn.textContent = 'GENERATING QR CODE...';
+        // Build QR code URL
+        const params = new URLSearchParams({
+            text: websiteUrl,
+            size: "1000",
+            format: "png",
+            margin: "2",
+            dark: "160b08",
+            light: "ffffff",
+            ecLevel: "H",
+            centerImageUrl: logoData,
+            centerImageSizeRatio: "0.22"
+        });
 
-        qrOutput.textContent = 'Creating your QR code...';
+        qrImageUrl = `https://quickchart.io/qr?${params.toString()}`;
 
-        const apiUrl = new URL(
-            'https://api.qrserver.com/v1/create-qr-code/'
-        );
+        // Verify that the QR image loads
+        const qrImage = new Image();
 
-        apiUrl.searchParams.set('size', '800x800');
-        apiUrl.searchParams.set('format', 'png');
-        apiUrl.searchParams.set('margin', '10');
-        apiUrl.searchParams.set('color', '22-11-8');
-        apiUrl.searchParams.set('bgcolor', '255-255-255');
-        apiUrl.searchParams.set('ecc', 'H');
-        apiUrl.searchParams.set('data', url);
+        qrImage.onload = () => {
+            output.innerHTML = "";
+            qrImage.id = "leeQrImage";
+            qrImage.alt = "LEE branded QR code";
+            qrImage.style.width = "100%";
+            qrImage.style.maxWidth = "320px";
+            qrImage.style.height = "auto";
+            qrImage.style.display = "block";
+            qrImage.style.margin = "0 auto";
 
-        const imageUrl = apiUrl.toString();
-
-        const image = new Image();
-
-        image.alt = 'Light Encounter Experience QR Code';
-        image.style.width = '100%';
-        image.style.maxWidth = '320px';
-        image.style.height = 'auto';
-        image.style.display = 'block';
-        image.style.margin = '20px auto';
-        image.style.background = '#ffffff';
-        image.style.padding = '12px';
-        image.style.borderRadius = '8px';
-
-        image.onload = () => {
-
-            qrImageUrl = imageUrl;
-
-            qrOutput.innerHTML = '';
-            qrOutput.appendChild(image);
-
-            downloadBtn.disabled = false;
-
-            generateBtn.disabled = false;
-            generateBtn.innerHTML =
-                'GENERATE QR CODE <b>↗</b>';
-
+            output.appendChild(qrImage);
+            downloadButton.disabled = false;
         };
 
-        image.onerror = () => {
-            throw new Error('The QR image could not be loaded.');
+        qrImage.onerror = () => {
+            qrImageUrl = null;
+            output.textContent =
+                "QR generation failed. Please try again.";
         };
 
-        image.src = imageUrl;
+        qrImage.src = qrImageUrl;
 
     } catch (error) {
-
-        console.error('QR Generation Error:', error);
-
-        qrOutput.textContent =
-            'Unable to generate QR code. Please try again.';
-
-        generateBtn.disabled = false;
-        generateBtn.innerHTML =
+        console.error("LEE QR Generation Error:", error);
+        output.textContent =
+            "Could not load the LEE logo. Check that assets/images/lee-mark.svg exists.";
+    } finally {
+        generateButton.disabled = false;
+        generateButton.innerHTML =
             'GENERATE QR CODE <b>↗</b>';
-
     }
-
 });
 
 // Download QR code
-downloadBtn.addEventListener('click', async () => {
-
+downloadButton.addEventListener("click", async () => {
     if (!qrImageUrl) return;
 
+    downloadButton.disabled = true;
+    downloadButton.textContent = "PREPARING DOWNLOAD...";
+
     try {
-
-        downloadBtn.disabled = true;
-        downloadBtn.textContent = 'PREPARING DOWNLOAD...';
-
         const response = await fetch(qrImageUrl);
 
         if (!response.ok) {
-            throw new Error('QR image download failed.');
+            throw new Error("QR download failed.");
         }
 
         const blob = await response.blob();
+        const downloadUrl = URL.createObjectURL(blob);
 
-        const blobUrl = URL.createObjectURL(blob);
-
-        const link = document.createElement('a');
-
-        link.href = blobUrl;
-        link.download = 'light-encounter-experience-qr.png';
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = "LEE-branded-QR-code.png";
 
         document.body.appendChild(link);
         link.click();
         link.remove();
 
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+        URL.revokeObjectURL(downloadUrl);
 
     } catch (error) {
-
-        console.error('QR Download Error:', error);
-
-        // Fallback: open the generated image directly
-        window.open(qrImageUrl, '_blank');
-
+        console.error("QR Download Error:", error);
+        window.open(qrImageUrl, "_blank");
     } finally {
-
-        downloadBtn.disabled = false;
-        downloadBtn.textContent = 'DOWNLOAD QR CODE';
-
+        downloadButton.disabled = false;
+        downloadButton.textContent = "DOWNLOAD QR CODE";
     }
-
 });
 
-// Press Enter to generate
-siteUrl.addEventListener('keydown', event => {
-
-    if (event.key === 'Enter') {
-        generateBtn.click();
+// Allow Enter key to generate the QR code
+urlInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        generateButton.click();
     }
-
 });
