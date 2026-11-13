@@ -1,110 +1,146 @@
 
-let qrCanvas = null;
+let qrImageUrl = null;
 
 const generateBtn = document.getElementById('generateQr');
 const downloadBtn = document.getElementById('downloadQr');
 const siteUrl = document.getElementById('siteUrl');
 const qrOutput = document.getElementById('qrOutput');
 
-// Load a backup QR library if the original CDN fails
-async function ensureQRCodeLibrary() {
-    if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
-        return window.QRCode;
-    }
-
-    const backupSources = [
-        'https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js'
-    ];
-
-    for (const source of backupSources) {
-        try {
-            await new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = source;
-                script.onload = resolve;
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
-
-            if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
-                return window.QRCode;
-            }
-        } catch (error) {
-            console.warn('QR library source failed:', source, error);
-        }
-    }
-
-    throw new Error('QR-code library could not be loaded.');
-}
-
 // Generate QR code
 generateBtn.addEventListener('click', async () => {
+
     const url = siteUrl.value.trim();
 
+    qrImageUrl = null;
     downloadBtn.disabled = true;
-    qrCanvas = null;
 
     if (!/^https?:\/\/[^\s]+$/i.test(url)) {
-        qrOutput.textContent = 'Enter a valid website URL, including https://';
+        qrOutput.textContent =
+            'Please enter a valid website URL starting with https://';
         return;
     }
 
-    qrOutput.textContent = 'Generating your QR code...';
-
     try {
-        const QR = await ensureQRCodeLibrary();
 
-        qrOutput.innerHTML = '';
+        generateBtn.disabled = true;
+        generateBtn.textContent = 'GENERATING QR CODE...';
 
-        qrCanvas = document.createElement('canvas');
+        qrOutput.textContent = 'Creating your QR code...';
 
-        await QR.toCanvas(qrCanvas, url, {
-            width: 500,
-            margin: 3,
-            color: {
-                dark: '#160b08',
-                light: '#ffffff'
-            },
-            errorCorrectionLevel: 'H'
-        });
+        const apiUrl = new URL(
+            'https://api.qrserver.com/v1/create-qr-code/'
+        );
 
-        qrOutput.appendChild(qrCanvas);
-        downloadBtn.disabled = false;
+        apiUrl.searchParams.set('size', '800x800');
+        apiUrl.searchParams.set('format', 'png');
+        apiUrl.searchParams.set('margin', '10');
+        apiUrl.searchParams.set('color', '22-11-8');
+        apiUrl.searchParams.set('bgcolor', '255-255-255');
+        apiUrl.searchParams.set('ecc', 'H');
+        apiUrl.searchParams.set('data', url);
+
+        const imageUrl = apiUrl.toString();
+
+        const image = new Image();
+
+        image.alt = 'Light Encounter Experience QR Code';
+        image.style.width = '100%';
+        image.style.maxWidth = '320px';
+        image.style.height = 'auto';
+        image.style.display = 'block';
+        image.style.margin = '20px auto';
+        image.style.background = '#ffffff';
+        image.style.padding = '12px';
+        image.style.borderRadius = '8px';
+
+        image.onload = () => {
+
+            qrImageUrl = imageUrl;
+
+            qrOutput.innerHTML = '';
+            qrOutput.appendChild(image);
+
+            downloadBtn.disabled = false;
+
+            generateBtn.disabled = false;
+            generateBtn.innerHTML =
+                'GENERATE QR CODE <b>↗</b>';
+
+        };
+
+        image.onerror = () => {
+            throw new Error('The QR image could not be loaded.');
+        };
+
+        image.src = imageUrl;
 
     } catch (error) {
+
         console.error('QR Generation Error:', error);
 
-        qrCanvas = null;
         qrOutput.textContent =
-            'QR generation failed. Please check your internet connection and try again.';
+            'Unable to generate QR code. Please try again.';
+
+        generateBtn.disabled = false;
+        generateBtn.innerHTML =
+            'GENERATE QR CODE <b>↗</b>';
 
     }
+
 });
 
 // Download QR code
-downloadBtn.addEventListener('click', () => {
-    if (!qrCanvas) return;
+downloadBtn.addEventListener('click', async () => {
+
+    if (!qrImageUrl) return;
 
     try {
+
+        downloadBtn.disabled = true;
+        downloadBtn.textContent = 'PREPARING DOWNLOAD...';
+
+        const response = await fetch(qrImageUrl);
+
+        if (!response.ok) {
+            throw new Error('QR image download failed.');
+        }
+
+        const blob = await response.blob();
+
+        const blobUrl = URL.createObjectURL(blob);
+
         const link = document.createElement('a');
 
+        link.href = blobUrl;
         link.download = 'light-encounter-experience-qr.png';
-        link.href = qrCanvas.toDataURL('image/png');
 
         document.body.appendChild(link);
         link.click();
         link.remove();
 
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+
     } catch (error) {
+
         console.error('QR Download Error:', error);
-        alert('Unable to download QR code. Please try again.');
+
+        // Fallback: open the generated image directly
+        window.open(qrImageUrl, '_blank');
+
+    } finally {
+
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = 'DOWNLOAD QR CODE';
+
     }
+
 });
 
-// Allow Enter key to generate QR
+// Press Enter to generate
 siteUrl.addEventListener('keydown', event => {
+
     if (event.key === 'Enter') {
         generateBtn.click();
     }
+
 });
